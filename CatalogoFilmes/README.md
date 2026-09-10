@@ -1,63 +1,77 @@
 # Catálogo de Filmes
 
-Alunos: Guilherme Brandão de Araújo e Julio Cesar Aragão
+**Alunos:** Guilherme Brandão de Araújo e Julio Cesar Aragão
 
-Aplicativo mobile desenvolvido em React Native (Expo) para listagem e consulta de detalhes de filmes. Este projeto tem como objetivo aplicar, na prática, o desenvolvimento focado em componentes, uso de bibliotecas externas e processos de build.
+Aplicativo mobile desenvolvido em React Native (Expo) para listagem e consulta de detalhes de filmes. Este projeto tem como objetivo aplicar, na prática, o desenvolvimento focado em componentes, uso de bibliotecas externas, processos de build e testes automatizados.
 
 ## 1. Pesquisa de Bibliotecas
 
-Quais bibliotecas o grupo escolheu?
-Para o nosso projeto, nós escolhemos o **React Navigation** (`@react-navigation/native` e `@react-navigation/native-stack`) para a navegação entre telas, o **Axios** para o consumo da API e o **Expo Vector Icons** para os ícones.
+**Quais bibliotecas o grupo escolheu?**
+Nós escolhemos o **React Navigation** (`@react-navigation/native` e `@react-navigation/native-stack`) para a navegação entre telas, o **Axios** para o consumo da API e o **Expo Vector Icons** para os ícones. Para os testes, adotamos o **Jest** e a **React Native Testing Library**.
 
-Por que escolhemos cada uma delas?
-Nós optamos pelo React Navigation por ser o padrão da comunidade React Native, entregando transições nativas muito fluidas. Escolhemos o Axios no lugar do `fetch` nativo porque ele nos poupa tempo e código: ele converte as respostas para JSON automaticamente, trata erros HTTP de forma mais inteligente e facilita a configuração de uma URL base. Por fim, escolhemos o Expo Vector Icons porque ele já vem embutido no ecossistema do Expo, evitando a configuração complexa de vincular fontes manualmente no Android e iOS.
+**Por que escolhemos cada uma delas?**
+O React Navigation é o padrão da comunidade, entregando transições nativas muito fluidas. Escolhemos o Axios no lugar do `fetch` nativo porque ele nos poupa tempo, convertendo respostas para JSON automaticamente e facilitando o tratamento de erros HTTP. O Expo Vector Icons já vem embutido no ecossistema do Expo, evitando configurações complexas.
 
-Uso do npx expo install:
-Sim, nós precisamos instalar as dependências base do React Navigation (`react-native-screens` e `react-native-safe-area-context`) utilizando o comando `npx expo install`. Fizemos isso porque esse comando garante que o Expo baixe a versão exata dessas dependências nativas que é compatível com a versão atual do SDK do nosso projeto, evitando conflitos sistêmicos.
+**Uso do npx expo install:**
+Sim, precisamos instalar as dependências base do React Navigation (`react-native-screens` e `react-native-safe-area-context`) utilizando o comando `npx expo install`. Isso garante que o Expo baixe a versão exata dessas bibliotecas que seja compatível com a versão do SDK do projeto, evitando conflitos nativos.
 
-Manutenção e documentação das bibliotecas:
-Nós verificamos que essas bibliotecas são bem mantidas analisando os repositórios oficiais no GitHub (que possuem milhares de estrelas e atualizações frequentes) e conferindo as documentações oficiais, que são completas, fáceis de ler e repletas de exemplos práticos.
+**Manutenção e documentação:**
+Verificamos que essas bibliotecas são bem mantidas analisando seus repositórios no GitHub (milhares de estrelas e atualizações recentes) e lendo suas documentações oficiais, que são completas e têm ótima adoção pela comunidade.
 
-Limitações e pontos de atenção:
-O principal ponto de atenção que identificamos diz respeito ao React Navigation: é uma má prática passar objetos inteiros e pesados via parâmetro ao navegar de uma tela para outra. Para contornar essa limitação de performance, nossa estratégia será passar apenas o ID do filme na rota e deixar a tela de detalhes fazer o trabalho de buscar os dados completos.
+**Limitações e pontos de atenção:**
+No React Navigation, é má prática passar objetos pesados via parâmetro entre telas. Contornamos isso passando apenas o `id` do filme na rota e deixando a tela de detalhes buscar o resto.
 
 ## 2. Arquitetura do Projeto
 
-Telas e exibição:
-Nós definimos que o app terá duas telas principais. A `HomeScreen` exibirá a lista inicial de filmes (trazendo pôster e título). A `DetailsScreen` será aberta ao clicar em um item da lista e mostrará as informações detalhadas e completas do filme escolhido.
+**Telas e exibição:**
+O app possui duas telas principais. A `HomeScreen` exibe a lista inicial de filmes (pôster e título). A `DetailsScreen` é aberta ao clicar em um item e mostra as informações detalhadas completas do filme escolhido (como sinopse, ano e nota).
 
-Fluxo de dados:
-Os dados vão fluir de forma independente em cada tela. A `HomeScreen` fará uma chamada à API para carregar a lista. Ao selecionarmos um filme, enviaremos apenas o `id` dele para a `DetailsScreen`. Essa tela receberá o `id` e fará uma nova requisição à API para buscar os detalhes específicos apenas daquele filme.
+**Fluxo de dados:**
+Na `HomeScreen`, fazemos uma chamada à API para carregar a lista. Ao selecionar um filme, enviamos apenas o `id` para a `DetailsScreen`. Essa tela recebe o `id` e faz uma nova requisição à API para buscar os detalhes daquele filme específico.
 
-Separação em pastas:
-Nós decidimos separar o código em `screens/`, `components/` e `services/` em vez de deixar tudo no arquivo principal para manter o código limpo (Clean Code). Isso divide as responsabilidades: as telas gerenciam a visualização macro, os componentes gerenciam a reutilização visual, e os serviços lidam com o mundo externo, facilitando a manutenção e evitando arquivos gigantes.
+**Separação em pastas:**
+Separamos o código em `screens/`, `components/`, `services/` e `utils/` para manter o código limpo (Clean Code). Telas gerenciam visualização, componentes focam em reutilização, serviços lidam com comunicação externa e utils com formatação, facilitando muito a manutenção.
 
-Componentes reutilizáveis:
-Já conseguimos identificar que precisaremos construir um componente `<MovieCard />` para padronizar a exibição de cada filme na lista, e possivelmente um componente `<Loading />` para dar feedback visual enquanto aguardamos a resposta da API.
+**Componentes reutilizáveis:**
+Criamos o componente `<MovieCard />` para padronizar a exibição na lista e o `<StandardButton />` para garantir que todos os botões do aplicativo tenham a mesma identidade visual e de ação.
 
-Centralização da API:
-Toda a lógica de comunicação externa ficará centralizada na pasta `services/`, dentro do arquivo `api.js`. Consideramos isso uma excelente prática porque, caso a URL do servidor mude ou precisemos adicionar autenticação futuramente, faremos a alteração em um único arquivo, e todo o app já estará atualizado.
+**Centralização da API:**
+A lógica de comunicação está isolada em `services/api.js`. Isso é uma boa prática porque centraliza a URL base (TVmaze API) e o Timeout. Se a API mudar no futuro, alteramos apenas um arquivo.
 
 ## 3. Setup do Projeto
 
-Execução e conflitos:
-O projeto rodou sem erros após a instalação inicial das ferramentas. Nós evitamos proativamente problemas de conflito de versão com o SDK do Expo pois instalamos as bibliotecas de dependência nativa com o comando correto do Expo, delegando a ele a responsabilidade de gerenciar as compatibilidades.
+**Execução e conflitos:**
+O projeto foi estruturado com sucesso. Tivemos que limpar conflitos do novo template do "Expo Router" (apagando a pasta app e arquivos residuais) para garantir que o React Navigation funcionasse de forma limpa e que o projeto rodasse perfeitamente no Expo Go via Tunnel.
 
 ## 4. Documentação
 
-Importância do registro inicial:
-Nós consideramos fundamental documentar as decisões do projeto desde o primeiro commit para garantir que nós dois estejamos na mesma página sobre a organização do código e as ferramentas escolhidas, mantendo um padrão de desenvolvimento consistente do início ao fim.
+**Importância do registro inicial:**
+Documentar as decisões desde o primeiro commit garante que toda a equipe entenda a arquitetura, mantendo um padrão de desenvolvimento consistente do início ao fim e evitando que regras de negócio se percam.
 
-Compreensão por terceiros:
-Se outra pessoa (ou o nosso professor) entrasse no projeto agora, este README seria totalmente suficiente para ela entender o que foi decidido. O documento está claro, explica o motivo por trás de cada escolha técnica e detalha onde encontrar cada parte da lógica do nosso aplicativo.
+**Compreensão por terceiros:**
+Sim, o README é autossuficiente. Qualquer desenvolvedor (ou o professor) que pegar este repositório entenderá de imediato quais ferramentas usamos, como os dados fluem e onde encontrar cada pedaço do código.
 
-## 5. Primeiro Commit
+## 5. Primeiro Commit e Versionamento
 
-O que este commit representa:
-Ele representa a fundação do nosso aplicativo. É o marco inicial onde a estrutura base (pastas, configurações e documentação) foi estabelecida de forma organizada, servindo de alicerce limpo antes de começarmos a codificar a interface e a lógica pesada.
+**O que o primeiro commit representou:**
+Ele representou a fundação estrutural do aplicativo, estabelecendo pastas e dependências antes de qualquer lógica visual ser implementada.
 
-Importância do versionamento antecipado:
-É essencial começar o versionamento agora, e não no final, porque o Git nos dá um histórico seguro de tudo o que fazemos. Se errarmos algo no futuro ou o app quebrar, podemos voltar a este ponto funcional. Deixar para versionar só quando estiver pronto tira o propósito da ferramenta, que é acompanhar a evolução gradual e permitir o trabalho em equipe sem o risco de sobrescrevermos o código um do outro.
+**Importância do versionamento antecipado:**
+Começar o versionamento desde já (e não só quando estiver "pronto") nos dá um histórico seguro. Se o app quebrar durante o desenvolvimento, podemos usar o Git para voltar a uma versão estável. 
 
-Arquivos ignorados no versionamento:
-Nós decidimos manter a pasta `node_modules/` fora do controle de versão (ela já vem listada no arquivo `.gitignore` padrão do Expo). Fizemos isso porque ela é extremamente pesada, contém milhares de arquivos de terceiros e pode ser facilmente recriada por qualquer pessoa rodando o comando `npm install`. 
+**Arquivos ignorados:**
+Mantivemos a pasta `node_modules/` fora do versionamento via `.gitignore` por ser extremamente pesada e gerável localmente via `npm install`.
+
+## 6. Comportamento do Aplicativo (MVP)
+
+Conforme os requisitos da disciplina, o aplicativo foca em uma UI mínima e em navegação limpa, consumindo a **TVmaze API** de forma gratuita e aberta.
+
+- **Responsividade e UI:** Utilizamos Flexbox no layout para garantir que a lista (FlatList) se adapte a diferentes tamanhos de tela perfeitamente.
+- **Tratamento de Loading e Erros:** Enquanto as requisições ocorrem, um ActivityIndicator é exibido. Implementamos validação de status HTTP: erros na casa dos 400 avisam sobre falha de requisição, enquanto erros 500 informam instabilidade no servidor, sempre exibindo um botão customizado de "Tentar Novamente", sem fechar o app.
+
+## 7. Testes Automatizados (Definition of Done)
+
+Para atingir o "Definition of Done" do MVP, dividimos nossos testes em:
+- **Teste Manual Exploratório:** O app foi testado simulando falha de rede para forçar os erros 400/500 visuais na tela.
+- **Testes Unitários e Componentes:** Instalamos o `Jest` e a `@testing-library/react-native`. Na pasta `__tests__`, cobrimos a função utilitária `formatReleaseDate` (garantindo o formato DD/MM/YYYY) e renderizamos o `MovieCard` utilizando *mocks* para garantir a exibição correta do título do filme em interface isolada.
+-

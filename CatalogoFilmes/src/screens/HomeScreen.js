@@ -1,5 +1,17 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, FlatList, ActivityIndicator, StyleSheet, Text, TextInput, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { 
+  FlatList, 
+  ActivityIndicator, 
+  StyleSheet, 
+  Text, 
+  TextInput, 
+  ScrollView, 
+  TouchableOpacity, 
+  Modal,
+  RefreshControl,
+  View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
 import { getMovies } from '../services/api';
 import MovieCard from '../components/MovieCard';
@@ -10,34 +22,54 @@ import { colors } from '../theme/colors';
 export default function HomeScreen({ navigation }) {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
-
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('Todos');
-  const [typedYear, setTypedYear] = useState(''); // Estado para o ano digitado
-  const [sortBy, setSortBy] = useState('default'); // default, az, za
+  const [selectedYear, setSelectedYear] = useState('Todos');
+  const [sortBy, setSortBy] = useState('default');
 
-  async function loadMovies() {
+  const fetchMovies = async () => {
     try {
-      setLoading(true);
       setErrorMessage('');
       const response = await getMovies();
       setMovies(response.data);
     } catch (err) {
       setErrorMessage('Falha na conexão. Verifique sua internet ou tente novamente mais tarde.');
-    } finally {
-      setLoading(false);
     }
-  }
+  };
 
-  useEffect(() => { loadMovies(); }, []);
+  useEffect(() => {
+    const loadInitialMovies = async () => {
+      setLoading(true);
+      await fetchMovies();
+      setLoading(false);
+    };
+    loadInitialMovies();
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchMovies();
+    setRefreshing(false);
+  }, []);
 
   const availableGenres = useMemo(() => {
     const genres = new Set();
     movies.forEach(m => m.genres?.forEach(g => genres.add(g)));
     return ['Todos', ...Array.from(genres).sort()];
+  }, [movies]);
+
+  const availableYears = useMemo(() => {
+    const years = new Set();
+    movies.forEach(m => {
+      if (m.premiered) {
+        years.add(m.premiered.substring(0, 4));
+      }
+    });
+    return ['Todos', ...Array.from(years).sort((a, b) => b - a)];
   }, [movies]);
 
   const filteredMovies = useMemo(() => {
@@ -51,8 +83,8 @@ export default function HomeScreen({ navigation }) {
       result = result.filter(m => m.genres?.includes(selectedGenre));
     }
 
-    if (typedYear.trim().length === 4) {
-      result = result.filter(m => m.premiered && m.premiered.substring(0, 4) === typedYear);
+    if (selectedYear !== 'Todos') {
+      result = result.filter(m => m.premiered && m.premiered.substring(0, 4) === selectedYear);
     }
 
     if (sortBy === 'az') {
@@ -62,34 +94,39 @@ export default function HomeScreen({ navigation }) {
     }
 
     return result;
-  }, [movies, searchQuery, selectedGenre, typedYear, sortBy]);
+  }, [movies, searchQuery, selectedGenre, selectedYear, sortBy]);
 
-  const hasActiveFilters = selectedGenre !== 'Todos' || typedYear.trim().length === 4 || sortBy !== 'default';
+  const renderMovieItem = useCallback(({ item }) => (
+    <MovieCard movie={item} onPress={() => navigation.navigate('Details', { id: item.id })} />
+  ), [navigation]);
+
+  const hasActiveFilters = selectedGenre !== 'Todos' || selectedYear !== 'Todos' || sortBy !== 'default';
 
   if (loading) return (
-    <View style={styles.centered}>
+    <SafeAreaView style={styles.centered}>
       <ActivityIndicator size="large" color={colors.primary} />
       <Text style={styles.loadingText}>Carregando catálogo...</Text>
-    </View>
+    </SafeAreaView>
   );
 
   if (errorMessage !== '') return (
-    <View style={styles.centered}>
+    <SafeAreaView style={styles.centered}>
       <Text style={styles.errorText}>{errorMessage}</Text>
-      <StandardButton title="Tentar Novamente" onPress={loadMovies} />
-    </View>
+      <StandardButton title="Tentar Novamente" onPress={() => { setLoading(true); fetchMovies().then(() => setLoading(false)); }} />
+    </SafeAreaView>
   );
 
   let emptyMessage = "Nenhum filme corresponde aos filtros selecionados.";
   if (searchQuery) {
     emptyMessage = `Nenhum filme corresponde à pesquisa "${searchQuery}".`;
-  } else if (typedYear.length === 4) {
-    emptyMessage = `Não encontramos filmes lançados no ano de ${typedYear}.`;
+  } else if (selectedYear !== 'Todos' && selectedGenre !== 'Todos') {
+    emptyMessage = `Não encontramos nenhum filme de ${selectedGenre} lançado em ${selectedYear}.`;
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       
+      {/* Barra de Pesquisa e Botão de Filtro */}
       <View style={styles.searchRow}>
         <View style={styles.searchContainer}>
           <FontAwesome name="search" size={16} color={colors.textSecondary} style={styles.searchIcon} />
@@ -111,6 +148,7 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      {/* Listagem ou Estado Vazio */}
       {filteredMovies.length === 0 ? (
         <EmptyState 
           iconName="film" 
@@ -124,12 +162,24 @@ export default function HomeScreen({ navigation }) {
           numColumns={2}
           contentContainerStyle={styles.list}
           columnWrapperStyle={styles.row}
-          renderItem={({ item }) => (
-            <MovieCard movie={item} onPress={() => navigation.navigate('Details', { id: item.id })} />
-          )}
+          renderItem={renderMovieItem}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              colors={[colors.primary]} 
+              tintColor={colors.primary} 
+            />
+          }
         />
       )}
 
+      {/* Modal de Filtros Flutuante */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -147,8 +197,6 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              
-              
               <Text style={styles.sectionTitle}>Categoria</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
                 {availableGenres.map(genre => (
@@ -162,19 +210,19 @@ export default function HomeScreen({ navigation }) {
                 ))}
               </ScrollView>
 
-             
               <Text style={styles.sectionTitle}>Ano de Lançamento</Text>
-              <TextInput
-                style={styles.yearInput}
-                placeholder="Digite o ano (Ex: 2012)"
-                placeholderTextColor={colors.textSecondary}
-                keyboardType="numeric"
-                maxLength={4}
-                value={typedYear}
-                onChangeText={setTypedYear}
-              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+                {availableYears.map(year => (
+                  <TouchableOpacity 
+                    key={year} 
+                    style={[styles.filterChip, selectedYear === year && styles.filterChipActive]}
+                    onPress={() => setSelectedYear(year)}
+                  >
+                    <Text style={[styles.filterChipText, selectedYear === year && styles.filterChipTextActive]}>{year}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
 
-             
               <Text style={styles.sectionTitle}>Ordem Alfabética</Text>
               <View style={styles.sortContainer}>
                 <TouchableOpacity 
@@ -198,7 +246,6 @@ export default function HomeScreen({ navigation }) {
                   <Text style={[styles.sortButtonText, sortBy === 'za' && styles.sortButtonTextActive]}>Z - A</Text>
                 </TouchableOpacity>
               </View>
-
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -206,7 +253,7 @@ export default function HomeScreen({ navigation }) {
                 style={styles.clearButton} 
                 onPress={() => {
                   setSelectedGenre('Todos');
-                  setTypedYear('');
+                  setSelectedYear('Todos');
                   setSortBy('default');
                 }}
               >
@@ -222,7 +269,7 @@ export default function HomeScreen({ navigation }) {
         </View>
       </Modal>
 
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -309,17 +356,6 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   filterChipText: { color: colors.textSecondary, fontWeight: 'bold' },
   filterChipTextActive: { color: colors.textPrimary },
-
-  yearInput: {
-    backgroundColor: colors.surface,
-    color: colors.textPrimary,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 16
-  },
 
   sortContainer: { flexDirection: 'row', gap: 12, marginBottom: 24 },
   sortButton: {

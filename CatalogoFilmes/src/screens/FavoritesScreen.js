@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import MovieCard from '../components/MovieCard';
 import EmptyState from '../components/EmptyState';
@@ -24,14 +25,14 @@ export default function FavoritesScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <SafeAreaView style={[styles.container, styles.centered]} edges={['top', 'left', 'right']}>
         <ActivityIndicator size="large" color={colors.accent} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {favorites.length === 0 ? (
         <EmptyState 
           iconName="star-o" 
@@ -50,12 +51,13 @@ export default function FavoritesScreen({ navigation }) {
           )}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  centered: { justifyContent: 'center', alignItems: 'center' },
   list: { padding: 8 },
   row: { flex: 1, justifyContent: 'space-around' },
 });

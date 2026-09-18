@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import { FlatList, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import MovieCard from '../components/MovieCard';
 import EmptyState from '../components/EmptyState';
@@ -20,7 +21,7 @@ export default function HistoryScreen({ navigation }) {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {history.length === 0 ? (
         <EmptyState 
           iconName="hourglass-half" 
@@ -39,7 +40,7 @@ export default function HistoryScreen({ navigation }) {
           )}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
